@@ -1,16 +1,15 @@
 'use strict';
 
-import { Logger } from 'sitka';
 import { batchPriceV1 } from './v1';
 import { batchPriceV2 } from './v2';
 import { batchPriceV21 } from './v2_1';
-import { AVAX_USDT, AVAX_WAVAX, CHAIN_IDS } from './lib/constants';
+import { CHAIN_IDS } from './lib/constants';
 import express from "express"
 import { utils } from 'ethers';
 import { fmtBatchResponse, fmtSingleResponse } from './lib/helpers';
 import bodyParser from 'body-parser';
 
-const app = express()
+export const app = express()
 const port = process.env.PORT || 3333;
 app.use(express.json())
 app.use(bodyParser.json())
@@ -148,4 +147,3 @@ app.post("/:chainid/v2_1/batch-prices", async (req, res) => {
 app.listen(port, () => {
     console.log(`Example app listening at http://localhost:${port}`);
 });
-
