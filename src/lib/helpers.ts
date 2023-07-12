@@ -1,5 +1,6 @@
 import { E18, E6_ADDRESSES, E8_ADDRESSES } from './constants'
 import { BigNumber, constants, ethers, utils } from 'ethers'
+import { FullPairResults } from './interfaces'
 
 export const getDecimals = (chainid: number, addr: string) => {
 	return E8_ADDRESSES[chainid].includes(utils.getAddress(addr)) ? 8 : E6_ADDRESSES[chainid].includes(utils.getAddress(addr)) ? 6 : 18
@@ -78,4 +79,19 @@ const wrapMul = (x: BigNumber, y: BigNumber) => {
 
 export const sortTokens = (a: string, b: string) : [string, string] => {
 	return a < b ? [a, b] : [b, a]
+}
+
+export const fmtBatchResponse = (block_number: number, chain_id: number, results: FullPairResults[]) => {
+	return {
+		block_number,
+		chain_id,
+		data: results
+	}
+}
+export const fmtSingleResponse = (block_number: number, chain_id: number, results: FullPairResults) => {
+	return {
+		block_number,
+		chain_id,
+		...results
+	}
 }
