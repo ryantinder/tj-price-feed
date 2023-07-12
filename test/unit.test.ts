@@ -57,12 +57,12 @@ import { ARB_PAIRS, AVAX_PAIRS, BSC_PAIRS } from '../src/lib/constants';
 //     });
 // });
 const main = async () => {
-    const prices = await batchPriceV1(42161, [
-        ARB_PAIRS[0]
-    ])
-    const _ = await batchPriceV1(42161, [
-        ARB_PAIRS[0]
-    ])
+	const prices = await batchPriceV1(42161, [
+		ARB_PAIRS[0]
+	])
+	const _ = await batchPriceV1(42161, [
+		ARB_PAIRS[0]
+	])
 }
 main().then()
 
