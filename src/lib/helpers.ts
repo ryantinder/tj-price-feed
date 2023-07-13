@@ -1,6 +1,8 @@
-import { E18, E6_ADDRESSES, E8_ADDRESSES } from './constants'
+import { BAD_PAIR, E18, E6_ADDRESSES, E8_ADDRESSES, PROBLEM_BTC_ETH_V2_1_POOL, PROBLEM_BTC_ETH_V2_POOL } from './constants'
 import { BigNumber, constants, ethers, utils } from 'ethers'
-import { FullPairResults } from './interfaces'
+import { FullPairResults, PairAddress } from './interfaces'
+import { logger } from '..'
+import { ERROR_V2_PRICE_MATH_FAILED } from './error'
 
 export const getDecimals = (chainid: number, addr: string) => {
 	return E8_ADDRESSES[chainid].includes(utils.getAddress(addr)) ? 8 : E6_ADDRESSES[chainid].includes(utils.getAddress(addr)) ? 6 : 18
@@ -81,17 +83,43 @@ export const sortTokens = (a: string, b: string) : [string, string] => {
 	return a < b ? [a, b] : [b, a]
 }
 
-export const fmtBatchResponse = (block_number: number, chain_id: number, results: FullPairResults[]) => {
-	return {
-		block_number,
-		chain_id,
-		data: results
-	}
-}
-export const fmtSingleResponse = (block_number: number, chain_id: number, results: FullPairResults) => {
-	return {
-		block_number,
-		chain_id,
-		...results
-	}
+export const getFullPairObj = (
+    chainid: number,
+    pair_addr: PairAddress, 
+    block_number: number, 
+    activeId: number, reserve0: 
+    BigNumber, 
+    reserve1: BigNumber, 
+    token0: string, 
+    token1: string
+) : FullPairResults => {
+    try {
+        const [dec0, dec1] = [getDecimals(chainid, token0), getDecimals(chainid, token1)]
+        const priceu128x128 = getPriceFromId(activeId, pair_addr.bin)
+        let price = 0;
+        if (dec0 == dec1) {
+            price = parseFloat(utils.formatUnits(u128x128toDec(priceu128x128), 18))
+        } else if (dec0 == 8 || dec1 == 8) { // for 8 to 18
+            price = parseFloat(utils.formatUnits(u128x128toDec(priceu128x128), 28))
+        } else {
+            price = parseFloat(utils.formatUnits(u128x128toDec(priceu128x128), 30))
+        }
+        logger.debug(`${price} ${token0} ${token1} ${dec0} ${dec1} ${pair_addr.asset} ${pair_addr.quote} ${pair_addr.address}`)
+        
+        if ([PROBLEM_BTC_ETH_V2_POOL, PROBLEM_BTC_ETH_V2_1_POOL].includes(utils.getAddress(pair_addr.address))) price = 1 / price;
+        return {
+            ...pair_addr,
+            token0,
+            token1,
+            reserve0: parseFloat(utils.formatUnits(reserve0, dec0)), 
+            reserve1: parseFloat(utils.formatUnits(reserve1, dec1)),
+            yToX: price, 
+            price: price != 0 ? 1 / price : 0,
+        }
+    } catch (e) {
+        logger.debug(e)
+        return {
+            ...BAD_PAIR, ...pair_addr, err: ERROR_V2_PRICE_MATH_FAILED(pair_addr.address)
+        }
+    }
 }

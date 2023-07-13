@@ -1,22 +1,26 @@
-import { constants, providers } from 'ethers'
+import { constants, providers, utils } from 'ethers'
 import { getAddress } from 'ethers/lib/utils'
 import { FullPairResults, Pair } from './interfaces'
 
 export const CHAIN_IDS = [43114, 42161, 56]
 
 export const ARB_WETH = getAddress('0x82aF49447D8a07e3bd95BD0d56f35241523fBab1')
-export const ARB_USDCe = getAddress('0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8')
-export const ARB_USDC = getAddress('0xaf88d065e77c8cC2239327C5EDb3A432268e5831')
+export const ARB_ARB = getAddress('0x912ce59144191c1204e64559fe8253a0e49e6548')
+export const ARB_JOE = getAddress('0x371c7ec6d8039ff7933a2aa28eb827ffe1f52f07')
+
 export const ARB_BTC_b = getAddress('0x2297aebd383787a160dd0d9f71508148769342e3')
 export const ARB_WBTC = getAddress('0x2f2a2543b76a4166549f7aab2e75bef0aefc5b0f')
-export const ARB_JOE = getAddress('0x371c7ec6d8039ff7933a2aa28eb827ffe1f52f07')
-export const ARB_ARB = getAddress('0x912ce59144191c1204e64559fe8253a0e49e6548')
+export const ARB_svBTC = getAddress('0xeee18334c414a47fb886a7317e1885b2bfb8c2a6')
+
+export const ARB_USDCe = getAddress('0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8')
+export const ARB_USDC = getAddress('0xaf88d065e77c8cC2239327C5EDb3A432268e5831')
 export const ARB_USDT = getAddress('0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9')
 
 export const ARB_PAIRS: Pair[] = [
 	{ asset: ARB_WETH, quote: ARB_USDCe, bin: 15},
 	{ asset: ARB_WETH, quote: ARB_BTC_b, bin: 10},
-	{ asset: ARB_ARB, quote: ARB_WETH, bin: 20}
+	{ asset: ARB_WETH, quote: ARB_ARB, bin: 20},
+	{ asset: ARB_USDT, quote: ARB_USDC, bin: 1}
 ]
 
 export const AVAX_WAVAX = getAddress('0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7')
@@ -82,10 +86,14 @@ export const V2_FACTORY_ADDRESSES: {[chainid: number] : string} = {
 }
 export const V2_1_FACTORY_ADDRESS = '0x8e42f2F4101563bF679975178e880FD87d3eFd4e'
 
+export const PROBLEM_BTC_ETH_V2_POOL = utils.getAddress("0x22300140ab7F5e20D48c2E4d826bd95a13458Baa")
+export const PROBLEM_BTC_ETH_V2_1_POOL = utils.getAddress("0xdf34e7548af638cc37b8923ef1139ea98644735a")
 export const BAD_PAIR: FullPairResults = {
 	address: constants.AddressZero,
 	asset: constants.AddressZero,
 	quote: constants.AddressZero,
+    token0: constants.AddressZero,
+    token1: constants.AddressZero,
 	bin: -1,
 	price: -1,
 	reserve0: -1,

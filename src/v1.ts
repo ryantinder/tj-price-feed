@@ -56,6 +56,8 @@ export const batchPriceV1 = async (chainid: number, pairs: Pair[]) : Promise<[nu
 					const xToY = calcXtoY(cache.reserves0, cache.reserves1, dec0, dec1)
 					return Promise.resolve({
 						...pair_addr, 
+                        token0,
+                        token1,
 						reserve0: parseFloat(utils.formatUnits(cache.reserves0, dec0)), 
 						reserve1: parseFloat(utils.formatUnits(cache.reserves1, dec1)),
 						price: xToY,
@@ -75,7 +77,9 @@ export const batchPriceV1 = async (chainid: number, pairs: Pair[]) : Promise<[nu
 					v1CacheReservesSet(pair_addr.address, reserves[0], reserves[1], block_number)
 
 					return {
-						...pair_addr, 
+						...pair_addr,
+                        token0,
+                        token1,
 						reserve0: parseFloat(utils.formatUnits(reserves[0], dec0)), 
 						reserve1: parseFloat(utils.formatUnits(reserves[1], dec1)),
 						price: xToY,
