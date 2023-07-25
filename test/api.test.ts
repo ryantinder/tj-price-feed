@@ -13,7 +13,7 @@ import axios, { AxiosResponse } from 'axios';
 
 const getPair = async (pair: Pair, offchain_addr: string, version: Version, chainid: number) => {
     // get our price
-    let res = await axios.get(`http://127.0.0.1:3333/${chainid}/v1/prices/${[pair.asset]}/${pair.quote}`) 
+    const res = await axios.get(`http://127.0.0.1:3333/${chainid}/v1/prices/${[pair.asset]}/${pair.quote}`) 
 
     const pair_info = res.data as PairResponse
     // get tj price
@@ -36,7 +36,7 @@ const getPair = async (pair: Pair, offchain_addr: string, version: Version, chai
 }
 const postPairs = async (pairs: Pair[], offchain_addrs: string[], version: Version, chainid: number) => {
     // get our price
-    let json = pairs.map( pair => {
+    const json = pairs.map( pair => {
         return {
             base: pair.asset,
             quote: pair.quote,
@@ -44,7 +44,7 @@ const postPairs = async (pairs: Pair[], offchain_addrs: string[], version: Versi
         }
     })
 
-    let res = await axios.post(
+    const res = await axios.post(
         `http://127.0.0.1:3333/${chainid}/v2_1/batch-prices`,
         { pairs: json }
     )

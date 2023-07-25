@@ -4,26 +4,26 @@ import axios from 'axios';
 import { ARB_JOE, ARB_WETH } from '../src/lib/constants';
 
 describe('Load tests', async () => {
-    it.only("10 conseq get requests", async () => {
+    it("10 conseq get requests", async () => {
         const pair = { asset: ARB_WETH, quote: ARB_JOE, bin: 20}
         const s0: number[] = []
-        for (let i = 0; i < 10; i++) {
-            let start = Date.now()
-            const res = await axios.get(`http://localhost:3000/42161/v2_1/prices/${[pair.asset]}/${pair.quote}/${pair.bin}`) 
-            let end = Date.now()
+        for (let i = 0; i < 1000; i++) {
+            const start = Date.now()
+            const res = await axios.get(`http://localhost:3333/42161/v2_1/prices/${[pair.asset]}/${pair.quote}/${pair.bin}`) 
+            const end = Date.now()
             s0.push(end - start)
         }
         console.log( plot(s0 , { height: 10}) )
     }).timeout(500000)
-    it("10 simul get requests", async () => {
+    it.only("10 simul get requests", async () => {
         console.log("test start")
         const pair = { asset: ARB_WETH, quote: ARB_JOE, bin: 20}
         // cache the pair
-        const s0 = await Promise.all( Array(10).fill(0).map( async (_) : Promise<number> => {
-            let start = Date.now()
+        const s0 = await Promise.all( Array(100).fill(0).map( async (_) : Promise<number> => {
+            const start = Date.now()
             console.log("starting")
-            await axios.get(`http://localhost:3000/42161/v2_1/prices/${[pair.asset]}/${pair.quote}/${pair.bin}`) 
-            let end = Date.now()
+            await axios.get(`http://localhost:3333/42161/v2_1/prices/${[pair.asset]}/${pair.quote}/${pair.bin}`) 
+            const end = Date.now()
             console.log(start, end)
             return end - start
         }))

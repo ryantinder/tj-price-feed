@@ -1,13 +1,12 @@
 import { MulticallWrapper } from "ethers-multicall-provider";
-import { Version } from "../common";
-import { Cache } from "./cache";
-import { TEN_POW, getDecimals, getPriceFromId, sortTokens, u128x128toDec } from "./helpers";
-import { FullPairResults, Pair, PairAddress, Reserves } from "./interfaces";
-import { BAD_PAIR, BAD_RESERVES, E18, PROBLEM_BTC_ETH_V2_1_POOL, PROBLEM_BTC_ETH_V2_POOL, PROVIDERS, V1_FACTORY_ADDRESSES, V2_1_FACTORY_ADDRESS, V2_FACTORY_ADDRESSES } from "./constants";
+import { Version } from "./common";
+import { Cache } from "./lib/cache";
+import { TEN_POW, getDecimals, getPriceFromId, sortTokens, u128x128toDec } from "./lib/helpers";
+import { FullPairResults, Pair, PairAddress, Reserves } from "./lib/interfaces";
+import { BAD_PAIR, BAD_RESERVES, E18, PROBLEM_BTC_ETH_V2_1_POOL, PROBLEM_BTC_ETH_V2_POOL, PROVIDERS, V1_FACTORY_ADDRESSES, V2_1_FACTORY_ADDRESS, V2_FACTORY_ADDRESSES } from "./lib/constants";
 import { BigNumber, Contract, constants, utils } from "ethers";
-import { V1_FACTORY_ABI, V1_PAIR_ABI, V2_1_FACTORY_ABI, V2_1_PAIR_ABI, V2_FACTORY_ABI, V2_PAIR } from "./abi";
-import { ERROR_GET_RESERVES_FAILED, ERROR_PAIR_NOT_FOUND, ERROR_V2_PRICE_MATH_FAILED } from "./error";
-import { logger } from "..";
+import { V1_FACTORY_ABI, V1_PAIR_ABI, V2_1_FACTORY_ABI, V2_1_PAIR_ABI, V2_FACTORY_ABI, V2_PAIR } from "./lib/abi";
+import { ERROR_GET_RESERVES_FAILED, ERROR_PAIR_NOT_FOUND, ERROR_V2_PRICE_MATH_FAILED } from "./lib/error";
 
 export class RPCManager {
     private version: Version
@@ -24,7 +23,7 @@ export class RPCManager {
     }}
 
     constructor( _version: Version) {
-        logger.info(`${_version} cache created`)
+        console.log(`${_version} cache created`)
         this.version = _version
         this.cache = new Cache(_version)
         this.pair_call_manager = {}
@@ -32,11 +31,11 @@ export class RPCManager {
     }
 
     printStats() {
-        logger.info(`${this.pair_rpc_calls} pair calls ${this.reserves_rpc_calls} reserves calls`)
+        console.log(`${this.pair_rpc_calls} pair calls ${this.reserves_rpc_calls} reserves calls`)
     }
 
     async getPairAddress( chainid: number, pair: Pair ) : Promise<PairAddress> {
-        logger.info("GETTING PAIR ADDRESS")
+        console.log("GETTING PAIR ADDRESS")
         const [token0, token1] = sortTokens(pair.asset, pair.quote)
         let address = constants.AddressZero;
         let err: string | undefined;
@@ -44,10 +43,10 @@ export class RPCManager {
 
         // if the rpc call is already out
         if (this.cache.hasPair(pair.bin, token0, token1)) {
-            logger.info("PAIR CACHE HIT")
+            console.log("PAIR CACHE HIT")
             address = this.cache.readPair(pair.bin, token0, token1)
         } else {
-            logger.info("PAIR CACHE MISS")
+            console.log("PAIR CACHE MISS")
             if (!this.pair_call_manager[t0t1bin] || !this.pair_call_manager[t0t1bin].isFetching) {
                 let promise: Promise<string>
                 if (this.version == Version.V1) {
@@ -60,7 +59,7 @@ export class RPCManager {
                 }
                 this.pair_call_manager[t0t1bin] = { isFetching: true, promise }
             }
-            logger.info("WAITING ON PROMISE RESOLUTION")
+            console.log("WAITING ON PROMISE RESOLUTION")
             address = await this.pair_call_manager[t0t1bin].promise
             this.pair_call_manager[t0t1bin].isFetching = false
             if ( address == constants.AddressZero ) err = ERROR_PAIR_NOT_FOUND(this.version, pair)
@@ -70,18 +69,18 @@ export class RPCManager {
     }
 
     async getPairReserves( chainid: number, pair: PairAddress) : Promise<FullPairResults> {
-        logger.info("GETTING RESERVES")
+        console.log("GETTING RESERVES")
         if (pair.err) return Promise.resolve({ ...BAD_PAIR, ...pair })
         const [token0, token1] = sortTokens(pair.asset, pair.quote)
         let err: string | undefined;
         let reserves: Reserves
 
         if (this.cache.hasReserves(pair.address) && this.cache.validReserves(pair.address)) {
-            logger.info("RESERVES CACHE HIT")
+            console.log("RESERVES CACHE HIT")
             reserves = this.cache.readReserves(pair.address)
         } else {
             // reserves might not exist or might be outdated
-            logger.info("RESERVES CACHE MISS")
+            console.log("RESERVES CACHE MISS")
             if (!this.reserves_call_manager[pair.address] || !this.reserves_call_manager[pair.address].isFetching) {
                 let promise: Promise<Reserves>
                 if (this.version == Version.V1) {
@@ -94,10 +93,10 @@ export class RPCManager {
                 }
                 this.reserves_call_manager[pair.address] = { isFetching: true, promise }
             }
-            logger.info("WAITING ON PROMISE RESOLUTION")
+            console.log("WAITING ON PROMISE RESOLUTION")
             reserves = await this.reserves_call_manager[pair.address].promise
             this.reserves_call_manager[pair.address].isFetching = false
-            logger.debug(reserves.err)
+            console.log(reserves.err)
             if ( reserves.err ) return Promise.resolve({ ...BAD_PAIR, ...pair, err })
         }
         // at this point we should only have valid reserves
@@ -119,35 +118,35 @@ export class RPCManager {
             if ( pair_addr != constants.AddressZero ) this.cache.setPair(pair.bin, token0, token1, utils.getAddress(pair_addr))
             return utils.getAddress(pair_addr)
         } catch (e) {
-            logger.error(e)
+            console.log(e)
             return constants.AddressZero
         }
     }
     private async _V2_1_PairAddr( chainid: number, pair: Pair, token0: string, token1: string ) : Promise<string> {
         const multicall_provider = MulticallWrapper.wrap(PROVIDERS[chainid]);
         const V2_1_FACTORY = new Contract(V2_1_FACTORY_ADDRESS, V2_1_FACTORY_ABI, multicall_provider);
-        logger.info("RPC CALLING PAIR ADDRESS")
+        console.log("RPC CALLING PAIR ADDRESS")
         this.pair_rpc_calls++;
         try {
             const [,pair_addr,,] = await V2_1_FACTORY.getLBPairInformation(token0, token1, pair.bin);
             if ( pair_addr != constants.AddressZero ) this.cache.setPair(pair.bin, token0, token1, utils.getAddress(pair_addr))
             return utils.getAddress(pair_addr)
         } catch (e) {
-            logger.error(e)
+            console.log(e)
             return constants.AddressZero
         }
     }
     private async _V2_PairAddr( chainid: number, pair: Pair, token0: string, token1: string ) : Promise<string> {
         const multicall_provider = MulticallWrapper.wrap(PROVIDERS[chainid]);
         const V2_FACTORY = new Contract(V2_FACTORY_ADDRESSES[chainid], V2_FACTORY_ABI, multicall_provider);
-        logger.info("RPC CALLING PAIR ADDRESS")
+        console.log("RPC CALLING PAIR ADDRESS")
         this.pair_rpc_calls++;
         try {
             const [,pair_addr,,] = await V2_FACTORY.getLBPairInformation(token0, token1, pair.bin);
             if ( pair_addr != constants.AddressZero ) this.cache.setPair(pair.bin, token0, token1, utils.getAddress(pair_addr))
             return utils.getAddress(pair_addr)
         } catch (e) {
-            logger.error(e)
+            console.log(e)
             return constants.AddressZero
         }
     }
@@ -155,7 +154,7 @@ export class RPCManager {
         const multicall_provider = MulticallWrapper.wrap(PROVIDERS[chainid]);
         const V1_PAIR = new Contract(constants.AddressZero, V1_PAIR_ABI, multicall_provider)
         const pair_contract = V1_PAIR.attach(pair.address)
-        logger.info("RPC CALLING RESERVES")
+        console.log("RPC CALLING RESERVES")
         this.reserves_rpc_calls++;
         try {
             const [block_number, [reserves0, reserves1]] : [number, [BigNumber, BigNumber]] = 
@@ -175,7 +174,7 @@ export class RPCManager {
         const multicall_provider = MulticallWrapper.wrap(PROVIDERS[chainid]);
         const V2_1_PAIR = new Contract(constants.AddressZero, V2_1_PAIR_ABI, multicall_provider)
         const pair_contract = V2_1_PAIR.attach(pair.address)
-        logger.info("RPC CALLING RESERVES")
+        console.log("RPC CALLING RESERVES")
         this.reserves_rpc_calls++;
         try {
             const [block_number, activeId, [reserves0, reserves1], token0, token1] : [number, number, [BigNumber, BigNumber], string, string] = 
@@ -197,7 +196,7 @@ export class RPCManager {
         const multicall_provider = MulticallWrapper.wrap(PROVIDERS[chainid]);
         const pair_base = new Contract(constants.AddressZero, V2_PAIR, multicall_provider)
         const pair_contract = pair_base.attach(pair.address)
-        logger.info("RPC CALLING RESERVES")
+        console.log("RPC CALLING RESERVES")
         this.reserves_rpc_calls++;
         try {
             const [block_number, [reserves0, reserves1, activeId], token0, token1] : [number, [BigNumber, BigNumber, number], string, string] = 
@@ -211,7 +210,7 @@ export class RPCManager {
             this.cache.setReserves(pair.address, timestamp, block_number, activeId, reserves0, reserves1, token0, token1)
             return this.cache.readReserves(pair.address)
         } catch (e) {
-            logger.debug(e)
+            console.log(e)
             return { ...BAD_RESERVES, err: ERROR_GET_RESERVES_FAILED(this.version, pair.address)}
         }
     }

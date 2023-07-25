@@ -7,7 +7,8 @@ import { offchainPairResults } from './lib/pricing';
 import { V2_1_ARB_WETH_PAIR, V2_1_BTC_WETH_PAIR, V2_1_USDT_USDC_PAIR, V2_1_USDT_USDCe_PAIR, V2_1_WETH_JOE_PAIR, V2_1_WETH_USDC_PAIR, V2_1_WETH_USDT_PAIR, V2_1_svBTC_wBTC_PAIR } from './lib/constants';
 import { higer, lower } from './lib/helpers';
 import { Pair } from '../src/lib/interfaces';
-import { logger, utils } from 'ethers';
+import { utils } from 'ethers';
+import { logger } from '../src';
 
 const checkPair = async (pair: Pair, offchain_addr: string, version: Version) => {
     // get our price

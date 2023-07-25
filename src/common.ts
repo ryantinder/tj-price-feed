@@ -1,6 +1,6 @@
 import { utils } from "ethers";
 import { FullPairResults, Pair, PairAddress, PairResponse } from "./lib/interfaces";
-import { RPCManager } from "./lib/RpcManager";
+import { RPCManager } from "./RpcManager";
 
 export enum Version {
     V1,
@@ -43,5 +43,6 @@ export const fetchPrices = async (chainid: number, pairs: Pair[], version: Versi
             inverse: switched ? pair.price : pair.yToX,
         }
     })
+    rpcManager.printStats()
     return results;
 }

@@ -1,7 +1,6 @@
 import { BAD_PAIR, E18, E6_ADDRESSES, E8_ADDRESSES, PROBLEM_BTC_ETH_V2_1_POOL, PROBLEM_BTC_ETH_V2_POOL } from './constants'
 import { BigNumber, constants, ethers, utils } from 'ethers'
 import { FullPairResults, PairAddress } from './interfaces'
-import { logger } from '..'
 import { ERROR_V2_PRICE_MATH_FAILED } from './error'
 
 export const getDecimals = (chainid: number, addr: string) => {
