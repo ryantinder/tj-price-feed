@@ -1,3 +1,5 @@
+import { BigNumber } from "ethers"
+
 export interface Pair {
     asset: string
     quote: string
@@ -10,6 +12,7 @@ export interface PairAddress extends Pair {
 }
 
 export interface FullPairResults extends PairAddress {
+    block_number: number
     reserve0: number
     reserve1: number
     token0: string
@@ -33,4 +36,15 @@ export interface PairResponse {
     inverse: number,
     err?: string,
     warn?: string
+}
+
+export interface Reserves {
+    timestamp: number,
+    block_number: number,
+    activeId: number,
+    reserves0: BigNumber,
+    reserves1: BigNumber,
+    token0: string,
+    token1: string,
+    err?: string
 }

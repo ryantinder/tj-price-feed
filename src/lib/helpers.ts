@@ -87,8 +87,8 @@ export const getFullPairObj = (
     chainid: number,
     pair_addr: PairAddress, 
     block_number: number, 
-    activeId: number, reserve0: 
-    BigNumber, 
+    activeId: number, 
+    reserve0: BigNumber, 
     reserve1: BigNumber, 
     token0: string, 
     token1: string
@@ -104,11 +104,11 @@ export const getFullPairObj = (
         } else {
             price = parseFloat(utils.formatUnits(u128x128toDec(priceu128x128), 30))
         }
-        logger.debug(`${price} ${token0} ${token1} ${dec0} ${dec1} ${pair_addr.asset} ${pair_addr.quote} ${pair_addr.address}`)
         
         if ([PROBLEM_BTC_ETH_V2_POOL, PROBLEM_BTC_ETH_V2_1_POOL].includes(utils.getAddress(pair_addr.address))) price = 1 / price;
         return {
             ...pair_addr,
+            block_number,
             token0,
             token1,
             reserve0: parseFloat(utils.formatUnits(reserve0, dec0)), 
@@ -117,7 +117,6 @@ export const getFullPairObj = (
             price: price != 0 ? 1 / price : 0,
         }
     } catch (e) {
-        logger.debug(e)
         return {
             ...BAD_PAIR, ...pair_addr, err: ERROR_V2_PRICE_MATH_FAILED(pair_addr.address)
         }

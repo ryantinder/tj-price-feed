@@ -1,6 +1,6 @@
-import { constants, providers, utils } from 'ethers'
+import { BigNumber, constants, providers, utils } from 'ethers'
 import { getAddress } from 'ethers/lib/utils'
-import { FullPairResults, Pair } from './interfaces'
+import { FullPairResults, Pair, Reserves } from './interfaces'
 
 export const CHAIN_IDS = [43114, 42161, 56]
 
@@ -40,11 +40,14 @@ export const AVAX_PAIRS: Pair[] = [
 	{ asset: AVAX_USDTe, quote: AVAX_USDC, bin: 1}
 ]
 
-export const BSC_BNB = getAddress('0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c')
+export const BSC_BNB = getAddress('0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c')
 export const BSC_LVL = getAddress('0xb64e280e9d1b5dbec4accedb2257a87b400db149')
+export const BSC_BUSD = getAddress('0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56')
+export const BSC_FIL = getAddress('0x0d8ce2a99bb6e3b7db580ed848240e4a0f9ae153')
+
 export const BSC_USDC = getAddress('0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d')
 export const BSC_USDT = getAddress('0x55d398326f99059ff775485246999027b3197955')
-export const BSC_FIL = getAddress('0x0d8ce2a99bb6e3b7db580ed848240e4a0f9ae153')
+
 export const BSC_BTCB = getAddress('0x7130d2a12b9bcbfae4f2634d864a1ee1ce3ead9c')
 export const BSC_BTC_B =  getAddress('0x2297aebd383787a160dd0d9f71508148769342e3')
 
@@ -94,9 +97,19 @@ export const BAD_PAIR: FullPairResults = {
 	quote: constants.AddressZero,
     token0: constants.AddressZero,
     token1: constants.AddressZero,
+    block_number: 0,
 	bin: -1,
 	price: -1,
 	reserve0: -1,
 	reserve1: -1,
 	yToX: -1
+}
+export const BAD_RESERVES: Reserves = {
+    activeId: -1,
+    block_number: -1,
+    reserves0: BigNumber.from(0),
+    reserves1: BigNumber.from(0),
+    timestamp: -1,
+    token0: "",
+    token1: ""
 }

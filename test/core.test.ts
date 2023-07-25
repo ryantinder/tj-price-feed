@@ -3,7 +3,7 @@
 import { expect } from 'chai';
 import { Version, fetchPrices } from '../src/common';
 import { ARB_ARB, ARB_BTC_b, ARB_JOE, ARB_PAIRS, ARB_USDC, ARB_USDCe, ARB_USDT, ARB_WBTC, ARB_WETH, ARB_svBTC, AVAX_PAIRS, BSC_PAIRS } from '../src/lib/constants';
-import { offchainPairResult } from './lib/pricing';
+import { offchainPairResults } from './lib/pricing';
 import { V2_1_ARB_WETH_PAIR, V2_1_BTC_WETH_PAIR, V2_1_USDT_USDC_PAIR, V2_1_USDT_USDCe_PAIR, V2_1_WETH_JOE_PAIR, V2_1_WETH_USDC_PAIR, V2_1_WETH_USDT_PAIR, V2_1_svBTC_wBTC_PAIR } from './lib/constants';
 import { higer, lower } from './lib/helpers';
 import { Pair } from '../src/lib/interfaces';
@@ -17,7 +17,7 @@ const checkPair = async (pair: Pair, offchain_addr: string, version: Version) =>
         version
     )
     // get tj price
-    const offchain_info = await offchainPairResult(offchain_addr)
+    const [offchain_info] = await offchainPairResults([offchain_addr], 42161)
     // compare the two
     console.table([
         pair_info,

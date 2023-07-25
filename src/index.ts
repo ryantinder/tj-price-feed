@@ -12,10 +12,10 @@ export const logger = Logger.getLogger();
 
 export const app = express()
 const port = process.env.PORT || 3333;
-app.use(express.json())
-app.use(bodyParser.json())
-app.use(express.text({ type: 'text/json' }));
-app.use(bodyParser.urlencoded({ extended: false }))
+
+app.get("/all", async (req, res) => {
+    res.json({"done" : true})
+})
 
 /*/////////////////////////////////////////////
                     GET
@@ -56,7 +56,7 @@ app.get('/:chainid/v2/prices/:base/:quote/:bin', async (req, res) => {
 });
 app.get('/:chainid/v2_1/prices/:base/:quote/:bin', async (req, res) => {
 	res.setHeader('Access-Control-Allow-Origin', '*');
-
+    console.log("Here")
 	// should only two params
 	// if (Object.keys(req.params).length != 3) return res.status(400).json({"ERR" : "Invalid num of parameters"})
 	if (!utils.isAddress(req.params.base)) return res.status(400).json({'ERR' : `Invalid base asset: ${req.params.base}`})
