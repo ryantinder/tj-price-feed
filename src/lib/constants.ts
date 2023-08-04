@@ -1,6 +1,7 @@
 import { BigNumber, constants, providers, utils } from 'ethers'
 import { getAddress } from 'ethers/lib/utils'
 import { FullPairResults, Pair, Reserves } from './interfaces'
+import { MulticallWrapper } from 'ethers-multicall-provider'
 
 export const CHAIN_IDS = [43114, 42161, 56]
 
@@ -77,6 +78,12 @@ export const PROVIDERS: {[chainid: number] : providers.JsonRpcProvider } = {
 	42161: new providers.JsonRpcProvider(process.env.ARBITRUM!),
 	56: new providers.JsonRpcProvider(process.env.BSC!)
 }
+export const MULTICALL_PROVIDERS: {[chainid: number] : providers.JsonRpcProvider } = {
+	43114: MulticallWrapper.wrap(PROVIDERS[43114]),
+	42161: MulticallWrapper.wrap(PROVIDERS[42161]),
+	56: MulticallWrapper.wrap(PROVIDERS[56])
+}
+
 export const V1_FACTORY_ADDRESSES: {[chainid: number] : string} = {
 	43114: '0x9Ad6C38BE94206cA50bb0d90783181662f0Cfa10',
 	42161: '0xaE4EC9901c3076D0DdBe76A520F9E90a6227aCB7',
@@ -88,7 +95,9 @@ export const V2_FACTORY_ADDRESSES: {[chainid: number] : string} = {
 	56: '0x43646A8e839B2f2766392C1BF8f60F6e587B6960'
 }
 export const V2_1_FACTORY_ADDRESS = '0x8e42f2F4101563bF679975178e880FD87d3eFd4e'
-
+export const BTC_PRICE = 30000
+export const ETH_PRICE = 1800
+export const BTC_ADDRESSES = [ARB_BTC_b, ARB_WBTC, ARB_svBTC, AVAX_BTC_b, AVAX_WBTC_e, BSC_BTCB, BSC_BTC_B]
 export const PROBLEM_BTC_ETH_V2_POOL = utils.getAddress("0x22300140ab7F5e20D48c2E4d826bd95a13458Baa")
 export const PROBLEM_BTC_ETH_V2_1_POOL = utils.getAddress("0xdf34e7548af638cc37b8923ef1139ea98644735a")
 export const BAD_PAIR: FullPairResults = {
@@ -111,5 +120,15 @@ export const BAD_RESERVES: Reserves = {
     reserves1: BigNumber.from(0),
     timestamp: -1,
     token0: "",
-    token1: ""
+    token1: "",
+    localLiquidityX: BigNumber.from(0),
+    localLiquidityY: BigNumber.from(0)
+}
+
+
+
+export enum Version {
+    V1,
+    V2,
+    V2_1
 }

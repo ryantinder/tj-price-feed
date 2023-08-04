@@ -19,6 +19,7 @@ export interface FullPairResults extends PairAddress {
     token1: string
     price: number
     yToX: number
+    warn?: string
 }
 
 export interface PairResponse {
@@ -46,5 +47,7 @@ export interface Reserves {
     reserves1: BigNumber,
     token0: string,
     token1: string,
+    localLiquidityX: BigNumber,
+    localLiquidityY: BigNumber,
     err?: string
 }

@@ -1,12 +1,8 @@
 import { utils } from "ethers";
 import { FullPairResults, Pair, PairAddress, PairResponse } from "./lib/interfaces";
 import { RPCManager } from "./RpcManager";
+import { Version } from "./lib/constants";
 
-export enum Version {
-    V1,
-    V2,
-    V2_1
-}
 
 const RPC_MANAGERS = [
     new RPCManager(Version.V1),

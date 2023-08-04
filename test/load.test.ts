@@ -15,7 +15,7 @@ describe('Load tests', async () => {
         }
         console.log( plot(s0 , { height: 10}) )
     }).timeout(500000)
-    it.only("10 simul get requests", async () => {
+    it("10 simul get requests", async () => {
         console.log("test start")
         const pair = { asset: ARB_WETH, quote: ARB_JOE, bin: 20}
         // cache the pair

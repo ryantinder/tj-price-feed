@@ -1,10 +1,8 @@
-import { MulticallWrapper } from "ethers-multicall-provider";
-import { Version } from "./common";
 import { Cache } from "./lib/cache";
 import { TEN_POW, getDecimals, getPriceFromId, sortTokens, u128x128toDec } from "./lib/helpers";
 import { FullPairResults, Pair, PairAddress, Reserves } from "./lib/interfaces";
-import { BAD_PAIR, BAD_RESERVES, E18, PROBLEM_BTC_ETH_V2_1_POOL, PROBLEM_BTC_ETH_V2_POOL, PROVIDERS, V1_FACTORY_ADDRESSES, V2_1_FACTORY_ADDRESS, V2_FACTORY_ADDRESSES } from "./lib/constants";
-import { BigNumber, Contract, constants, utils } from "ethers";
+import { ARB_WETH, BAD_PAIR, BAD_RESERVES, E18, MULTICALL_PROVIDERS, PROBLEM_BTC_ETH_V2_1_POOL, PROBLEM_BTC_ETH_V2_POOL, PROVIDERS, V1_FACTORY_ADDRESSES, V2_1_FACTORY_ADDRESS, V2_FACTORY_ADDRESSES, Version } from "./lib/constants";
+import { BigNumber, Contract, constants, ethers, utils } from "ethers";
 import { V1_FACTORY_ABI, V1_PAIR_ABI, V2_1_FACTORY_ABI, V2_1_PAIR_ABI, V2_FACTORY_ABI, V2_PAIR } from "./lib/abi";
 import { ERROR_GET_RESERVES_FAILED, ERROR_PAIR_NOT_FOUND, ERROR_V2_PRICE_MATH_FAILED } from "./lib/error";
 
@@ -46,7 +44,7 @@ export class RPCManager {
             console.log("PAIR CACHE HIT")
             address = this.cache.readPair(pair.bin, token0, token1)
         } else {
-            console.log("PAIR CACHE MISS")
+            console.log("PAIR CACHE MISS, NEED TO INIT PAIR")
             if (!this.pair_call_manager[t0t1bin] || !this.pair_call_manager[t0t1bin].isFetching) {
                 let promise: Promise<string>
                 if (this.version == Version.V1) {
@@ -111,49 +109,61 @@ export class RPCManager {
     }
 
     private async _V1_PairAddr( chainid: number, pair: Pair, token0: string, token1: string ) : Promise<string> {
-        const multicall_provider = MulticallWrapper.wrap(PROVIDERS[chainid]);
-        const V1_FACTORY = new Contract(V1_FACTORY_ADDRESSES[chainid], V1_FACTORY_ABI, multicall_provider);
+        const V1_FACTORY = new Contract(V1_FACTORY_ADDRESSES[chainid], V1_FACTORY_ABI, MULTICALL_PROVIDERS[chainid]);
         try {
             const pair_addr = await V1_FACTORY.getPair(token0, token1);
-            if ( pair_addr != constants.AddressZero ) this.cache.setPair(pair.bin, token0, token1, utils.getAddress(pair_addr))
-            return utils.getAddress(pair_addr)
+            if ( pair_addr != constants.AddressZero ) {
+                this.cache.setPair(pair.bin, token0, token1, utils.getAddress(pair_addr))
+                return this.cache.readPair(pair.bin, token0, token1)
+            }
+            return constants.AddressZero;
         } catch (e) {
             console.log(e)
             return constants.AddressZero
         }
     }
     private async _V2_1_PairAddr( chainid: number, pair: Pair, token0: string, token1: string ) : Promise<string> {
-        const multicall_provider = MulticallWrapper.wrap(PROVIDERS[chainid]);
-        const V2_1_FACTORY = new Contract(V2_1_FACTORY_ADDRESS, V2_1_FACTORY_ABI, multicall_provider);
+        const V2_1_FACTORY = new Contract(V2_1_FACTORY_ADDRESS, V2_1_FACTORY_ABI, MULTICALL_PROVIDERS[chainid]);
         console.log("RPC CALLING PAIR ADDRESS")
         this.pair_rpc_calls++;
         try {
-            const [,pair_addr,,] = await V2_1_FACTORY.getLBPairInformation(token0, token1, pair.bin);
-            if ( pair_addr != constants.AddressZero ) this.cache.setPair(pair.bin, token0, token1, utils.getAddress(pair_addr))
-            return utils.getAddress(pair_addr)
+            const [,_pair_addr,,] = await V2_1_FACTORY.getLBPairInformation(token0, token1, pair.bin);
+            const pair_addr = utils.getAddress(_pair_addr)
+            if ( pair_addr != constants.AddressZero ) {
+                const PAIR_CONTRACT = new Contract(pair_addr, V2_1_PAIR_ABI, MULTICALL_PROVIDERS[chainid]);
+                const activeId = await PAIR_CONTRACT.getActiveId();
+                this.cache.setPair(pair.bin, token0, token1, pair_addr)
+                this.cache.setBin(activeId, pair_addr);
+                return this.cache.readPair(pair.bin, token0, token1)
+            }
+            return constants.AddressZero
         } catch (e) {
             console.log(e)
             return constants.AddressZero
         }
     }
     private async _V2_PairAddr( chainid: number, pair: Pair, token0: string, token1: string ) : Promise<string> {
-        const multicall_provider = MulticallWrapper.wrap(PROVIDERS[chainid]);
-        const V2_FACTORY = new Contract(V2_FACTORY_ADDRESSES[chainid], V2_FACTORY_ABI, multicall_provider);
+        const V2_FACTORY = new Contract(V2_FACTORY_ADDRESSES[chainid], V2_FACTORY_ABI, MULTICALL_PROVIDERS[chainid]);
         console.log("RPC CALLING PAIR ADDRESS")
         this.pair_rpc_calls++;
         try {
-            const [,pair_addr,,] = await V2_FACTORY.getLBPairInformation(token0, token1, pair.bin);
-            if ( pair_addr != constants.AddressZero ) this.cache.setPair(pair.bin, token0, token1, utils.getAddress(pair_addr))
-            return utils.getAddress(pair_addr)
+            const [,_pair_addr,,] = await V2_FACTORY.getLBPairInformation(token0, token1, pair.bin);
+            const pair_addr = utils.getAddress(_pair_addr)
+            if ( pair_addr != constants.AddressZero ) {
+                const PAIR_CONTRACT = new Contract(pair_addr, V2_PAIR, MULTICALL_PROVIDERS[chainid])
+                const [,,activeId] = await PAIR_CONTRACT.getReservesAndId()
+                this.cache.setPair(pair.bin, token0, token1, pair_addr)
+                this.cache.setBin(activeId, pair_addr)
+                return this.cache.readPair(pair.bin, token0, token1)
+            }
+            return constants.AddressZero
         } catch (e) {
             console.log(e)
             return constants.AddressZero
         }
     }
     private async _V1_Reserves( chainid: number, pair: PairAddress) : Promise<Reserves> {
-        const multicall_provider = MulticallWrapper.wrap(PROVIDERS[chainid]);
-        const V1_PAIR = new Contract(constants.AddressZero, V1_PAIR_ABI, multicall_provider)
-        const pair_contract = V1_PAIR.attach(pair.address)
+        const pair_contract = new Contract(pair.address, V1_PAIR_ABI, MULTICALL_PROVIDERS[chainid])
         console.log("RPC CALLING RESERVES")
         this.reserves_rpc_calls++;
         try {
@@ -164,50 +174,64 @@ export class RPCManager {
                 ])
             const timestamp = Date.now()
             const [token0, token1] = sortTokens(pair.asset, pair.quote)
-            this.cache.setReserves(pair.address, timestamp, block_number, 0, reserves0, reserves1, token0, token1)
+            this.cache.setReserves(pair.address, timestamp, block_number, 0, reserves0, reserves1, token0, token1, reserves0, reserves1)
             return this.cache.readReserves(pair.address)
         } catch (e) {
             return { ...BAD_RESERVES, err: ERROR_GET_RESERVES_FAILED(this.version, pair.address)}
         }
     }
     private async _V2_1_Reserves( chainid: number, pair: PairAddress ) : Promise<Reserves> {
-        const multicall_provider = MulticallWrapper.wrap(PROVIDERS[chainid]);
-        const V2_1_PAIR = new Contract(constants.AddressZero, V2_1_PAIR_ABI, multicall_provider)
-        const pair_contract = V2_1_PAIR.attach(pair.address)
+        const pair_contract = new Contract(pair.address, V2_1_PAIR_ABI, MULTICALL_PROVIDERS[chainid])
         console.log("RPC CALLING RESERVES")
         this.reserves_rpc_calls++;
         try {
-            const [block_number, activeId, [reserves0, reserves1], token0, token1] : [number, number, [BigNumber, BigNumber], string, string] = 
+            const [block_number, activeId, [reserves0, reserves1], token0, token1, liquidity] : 
+                [
+                    number, 
+                    number, 
+                    [BigNumber, BigNumber], 
+                    string, 
+                    string,
+                    {liquidityX: BigNumber, liquidityY: BigNumber}
+                ] = 
                 await Promise.all([
                     PROVIDERS[chainid].getBlockNumber(), 
                     pair_contract.getActiveId(), 
                     pair_contract.getReserves(), 
                     pair_contract.getTokenX(), 
-                    pair_contract.getTokenY()
+                    pair_contract.getTokenY(),
+                    this._V2_NearbyLiquidity(pair_contract)
                 ])
             const timestamp = Date.now()
-            this.cache.setReserves(pair.address, timestamp, block_number, activeId, reserves0, reserves1, token0, token1)
+            this.cache.setReserves(pair.address, timestamp, block_number, activeId, reserves0, reserves1, token0, token1, liquidity.liquidityX, liquidity.liquidityY)
             return this.cache.readReserves(pair.address)
         } catch (e) {
             return { ...BAD_RESERVES, err: ERROR_GET_RESERVES_FAILED(this.version, pair.address)}
         }
     }
     private async _V2_Reserves( chainid: number, pair: PairAddress ) : Promise<Reserves> {
-        const multicall_provider = MulticallWrapper.wrap(PROVIDERS[chainid]);
-        const pair_base = new Contract(constants.AddressZero, V2_PAIR, multicall_provider)
-        const pair_contract = pair_base.attach(pair.address)
+        const pair_contract = new Contract(pair.address, V2_PAIR, MULTICALL_PROVIDERS[chainid])
         console.log("RPC CALLING RESERVES")
         this.reserves_rpc_calls++;
         try {
-            const [block_number, [reserves0, reserves1, activeId], token0, token1] : [number, [BigNumber, BigNumber, number], string, string] = 
+            const [block_number, [reserves0, reserves1, activeId], token0, token1, liquidity] : 
+                [
+                    number, 
+                    [BigNumber, BigNumber, number], 
+                    string, 
+                    string,
+                    { liquidityX: BigNumber, liquidityY: BigNumber}
+                ] = 
                 await Promise.all([
                     PROVIDERS[chainid].getBlockNumber(), 
                     pair_contract.getReservesAndId(), 
                     pair_contract.tokenX(), 
-                    pair_contract.tokenY()
+                    pair_contract.tokenY(),
+                    this._V2_NearbyLiquidity(pair_contract)
                 ])
+            
             const timestamp = Date.now()
-            this.cache.setReserves(pair.address, timestamp, block_number, activeId, reserves0, reserves1, token0, token1)
+            this.cache.setReserves(pair.address, timestamp, block_number, activeId, reserves0, reserves1, token0, token1, liquidity.liquidityX, liquidity.liquidityY)
             return this.cache.readReserves(pair.address)
         } catch (e) {
             console.log(e)
@@ -229,6 +253,8 @@ export class RPCManager {
             }
             
             if ([PROBLEM_BTC_ETH_V2_POOL, PROBLEM_BTC_ETH_V2_1_POOL].includes(utils.getAddress(pair.address))) price = 1 / price;
+            const lowX = getDecimals(chainid, data.token0) == 8 ? parseFloat(utils.formatUnits(data.localLiquidityX, 8)) / 30000 < 10 : utils.getAddress(data.token0) == ARB_WETH ? parseFloat(utils.formatEther(data.localLiquidityX)) / 1800 < 10 : parseFloat(utils.formatUnits(data.localLiquidityX, getDecimals(chainid, data.token0))) < 10
+            const lowY = getDecimals(chainid, data.token1) == 8 ? parseFloat(utils.formatUnits(data.localLiquidityX, 8)) / 30000 < 10 : utils.getAddress(data.token1) == ARB_WETH ? parseFloat(utils.formatEther(data.localLiquidityX)) / 1800 < 10 : parseFloat(utils.formatUnits(data.localLiquidityX, getDecimals(chainid, data.token1))) < 10
             return {
                 ...pair,
                 block_number: data.block_number,
@@ -238,6 +264,7 @@ export class RPCManager {
                 reserve1: parseFloat(utils.formatUnits(data.reserves1, dec1)),
                 yToX: price, 
                 price: price != 0 ? 1 / price : 0,
+                warn: lowX || lowY ? "Low liquidity around active bin" : undefined
             }
         } catch (e) {
             return {
@@ -266,5 +293,17 @@ export class RPCManager {
             const diff = dec1 - dec0
             return parseFloat(utils.formatUnits(reserves1.mul(E18).div(reserves0.mul(TEN_POW(diff))), 18))
         }
+    }
+
+    public _V2_NearbyLiquidity = async ( pair: Contract) : Promise<{ liquidityX: BigNumber, liquidityY: BigNumber}> => {
+        const last_bin = this.cache.readBin(pair.address)
+        const bins = await Promise.all(
+            Array(11).fill(last_bin - 5).map((x, i) => x + i).map( (bin) : Promise<[BigNumber, BigNumber]> => {
+                return pair.getBin(bin)
+            })
+        )
+        const liquidityX = bins.reduce((r, a) => r = r.add(a[0]), constants.Zero)
+        const liquidityY = bins.reduce((r, a) => r = r.add(a[1]), constants.Zero)
+        return { liquidityX, liquidityY }
     }
 }

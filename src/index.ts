@@ -1,10 +1,10 @@
 'use strict';
 
-import { CHAIN_IDS } from './lib/constants';
+import { CHAIN_IDS, Version} from './lib/constants';
 import express from 'express'
 import { utils } from 'ethers';
 import { Logger } from 'sitka';
-import { Version, fetchPrices } from './common';
+import { fetchPrices } from './common';
 import { Pair } from './lib/interfaces';
 
 export const logger = Logger.getLogger();

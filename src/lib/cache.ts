@@ -1,24 +1,20 @@
 import { BigNumber, utils } from 'ethers'
 import { logger } from '..'
-import { Version } from '../common'
+import { Version } from './constants'
+import { Reserves } from './interfaces'
 export class Cache {
     private pairs: { [token0: string] : {[token1: string] : {[bin: number] : string }} }
     
-    private reserves: { [pair: string] : {
-        timestamp: number,
-        block_number: number,
-        activeId: number,
-        reserves0: BigNumber,
-        reserves1: BigNumber,
-        token0: string,
-        token1: string
-    }}
+    private pair_to_last_bin: { [pair: string] : number}
+
+    private reserves: { [pair: string] : Reserves}
     
     private version: Version
     constructor(_version: Version) {
         this.reserves = {}
         this.pairs = {}
         this.version = _version
+        this.pair_to_last_bin = {}
     }
 
     setPair(bin: number, token0: string, token1: string, pair_addr: string) : void {
@@ -39,6 +35,15 @@ export class Cache {
         return this.pairs[token0][token1][bin];
     }
 
+    setBin(bin: number, pair: string) : void {
+        this.pair_to_last_bin[utils.getAddress(pair)] = bin;
+        logger.info(`${this.version} set bin ${pair}`)
+    }
+
+    readBin(pair: string) : number {
+        return this.pair_to_last_bin[utils.getAddress(pair)]
+    }
+
     
 
     setReserves(	
@@ -49,9 +54,11 @@ export class Cache {
         reserves0: BigNumber,
         reserves1: BigNumber,
         token0: string,
-        token1: string
+        token1: string,
+        localLiquidityX: BigNumber,
+        localLiquidityY: BigNumber
     ) {
-        this.reserves[pair] = { block_number, timestamp, activeId, reserves0, reserves1, token0, token1 }
+        this.reserves[pair] = { block_number, timestamp, activeId, reserves0, reserves1, token0, token1, localLiquidityX, localLiquidityY}
         logger.info(`Pair cached ${pair}`)
     }
 
