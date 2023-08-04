@@ -6,6 +6,7 @@ import { utils } from 'ethers';
 import { Logger } from 'sitka';
 import { fetchPrices } from './common';
 import { Pair } from './lib/interfaces';
+import { init } from './common';
 
 export const logger = Logger.getLogger();
 
@@ -22,8 +23,8 @@ app.get('/:chainid/v1/prices/:base/:quote', async (req, res) => {
 	if (!utils.isAddress(req.params.base)) return res.status(400).json({'ERR' : `Invalid base asset: ${req.params.base}`})
 	if (!utils.isAddress(req.params.quote)) return res.status(400).json({'ERR' : `Invalid quote asset: ${req.params.quote}`})
 	if (!CHAIN_IDS.includes(parseInt(req.params.chainid))) return res.status(400).json({'ERR' : 'Unsupported chain id'})
-	const base = req.params.base
-	const quote = req.params.quote
+	const base = utils.getAddress(req.params.base)
+	const quote = utils.getAddress(req.params.quote)
 	const chainId = parseInt(req.params.chainid)
     const pair: Pair = { asset: base, quote, bin: 0};
     const data = await fetchPrices(chainId, [pair], Version.V1)
@@ -39,8 +40,8 @@ app.get('/:chainid/v2/prices/:base/:quote/:bin', async (req, res) => {
 	if (!utils.isAddress(req.params.base)) return res.status(400).json({'ERR' : `Invalid base asset: ${req.params.base}`})
 	if (!utils.isAddress(req.params.quote)) return res.status(400).json({'ERR' : `Invalid quote asset: ${req.params.quote}`})
 	if (!CHAIN_IDS.includes(parseInt(req.params.chainid))) return res.status(400).json({'ERR' : 'Unsupported chain id'})
-	const base = req.params.base
-	const quote = req.params.quote
+	const base = utils.getAddress(req.params.base)
+	const quote = utils.getAddress(req.params.quote)
 	const chainId = parseInt(req.params.chainid)
 	const bin = parseInt(req.params.bin)
     const pair: Pair = { asset: base, quote, bin};
@@ -56,8 +57,8 @@ app.get('/:chainid/v2_1/prices/:base/:quote/:bin', async (req, res) => {
 	if (!utils.isAddress(req.params.base)) return res.status(400).json({'ERR' : `Invalid base asset: ${req.params.base}`})
 	if (!utils.isAddress(req.params.quote)) return res.status(400).json({'ERR' : `Invalid quote asset: ${req.params.quote}`})
 	if (!CHAIN_IDS.includes(parseInt(req.params.chainid))) return res.status(400).json({'ERR' : 'Unsupported chain id'})
-	const base = req.params.base
-	const quote = req.params.quote
+	const base = utils.getAddress(req.params.base)
+	const quote = utils.getAddress(req.params.quote)
 	const chainId = parseInt(req.params.chainid)
 	const bin = parseInt(req.params.bin)
     const pair: Pair = { asset: base, quote, bin};
@@ -77,7 +78,7 @@ app.post('/:chainid/v1/batch-prices', async (req, res) => {
 	const pairs = req.body.pairs as {base: string, quote: string}[]
     
 	const chainId = parseInt(req.params.chainid)
-    const _pairs= pairs.map( p => { return { ...p, asset: p.base, bin: 0}})
+    const _pairs= pairs.map( p => { return { asset: utils.getAddress(p.base), quote: utils.getAddress(p.quote), bin: 0}})
     const data = await fetchPrices(chainId, _pairs, Version.V1)
 
     if (!data) return res.status(400).json("Error occurred while fetching");
@@ -91,7 +92,7 @@ app.post('/:chainid/v2/batch-prices', async (req, res) => {
 	const pairs = req.body.pairs as {base: string, quote: string, bin: number}[]
     
 	const chainId = parseInt(req.params.chainid)
-    const _pairs= pairs.map( p => { return { ...p, asset: p.base}})
+    const _pairs= pairs.map( p => { return { asset: utils.getAddress(p.base), quote: utils.getAddress(p.quote), bin: p.bin}})
     const data = await fetchPrices(chainId, _pairs, Version.V2)
 
     if (!data) return res.status(400).json("Error occurred while fetching");
@@ -105,7 +106,7 @@ app.post('/:chainid/v2_1/batch-prices', async (req, res) => {
 	const pairs = req.body.pairs as {base: string, quote: string, bin: number}[]
     
 	const chainId = parseInt(req.params.chainid)
-    const _pairs= pairs.map( p => { return { ...p, asset: p.base}})
+    const _pairs= pairs.map( p => { return { asset: utils.getAddress(p.base), quote: utils.getAddress(p.quote), bin: p.bin}})
     const data = await fetchPrices(chainId, _pairs, Version.V2_1)
 
     if (!data) return res.status(400).json("Error occurred while fetching");
@@ -113,4 +114,5 @@ app.post('/:chainid/v2_1/batch-prices', async (req, res) => {
 });
 app.listen(port, () => {
 	console.log(`Example app listening at http://localhost:${port}`);
+    init()
 });

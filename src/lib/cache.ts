@@ -59,7 +59,7 @@ export class Cache {
         localLiquidityY: BigNumber
     ) {
         this.reserves[pair] = { block_number, timestamp, activeId, reserves0, reserves1, token0, token1, localLiquidityX, localLiquidityY}
-        logger.info(`Pair cached ${pair}`)
+        logger.info(`${this.version} set reserves ${pair}`)
     }
 
     hasReserves( pair: string ) : boolean {

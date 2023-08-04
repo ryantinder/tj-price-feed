@@ -1,7 +1,9 @@
-import { utils } from "ethers";
+import { Contract, utils } from "ethers";
 import { FullPairResults, Pair, PairAddress, PairResponse } from "./lib/interfaces";
 import { RPCManager } from "./RpcManager";
-import { Version } from "./lib/constants";
+import { MULTICALL_PROVIDERS, V1_FACTORY_ADDRESSES, V2_1_FACTORY_ADDRESS, V2_FACTORY_ADDRESSES, Version } from "./lib/constants";
+import { logger } from ".";
+import { V1_FACTORY_ABI, V2_1_FACTORY_ABI, V2_FACTORY_ABI } from "./lib/abi";
 
 
 const RPC_MANAGERS = [
@@ -37,8 +39,52 @@ export const fetchPrices = async (chainid: number, pairs: Pair[], version: Versi
             quote_reserves: switched ? pair.reserve0 : pair.reserve1,
             price: switched ? pair.yToX : pair.price,
             inverse: switched ? pair.price : pair.yToX,
+            err: pair.err
         }
     })
     rpcManager.printStats()
     return results;
+}
+
+const AVAX_V2_1_CREATION = 28388776
+const ARB_V2_1_CREATION = 77609159
+const ARB_V2_CREATION = 22442423
+const BSC_V2_1_CREATION = 27459407
+
+export const init = async () => {
+    logger.info("INIT")
+    // get all pair created events from factorys
+    // v2.1 arbitrum
+    let factory = new Contract(V2_1_FACTORY_ADDRESS, V2_1_FACTORY_ABI, MULTICALL_PROVIDERS[42161])
+    let filter = factory.filters.LBPairCreated();
+    let events = await factory.queryFilter(filter, ARB_V2_1_CREATION)
+    let pairs = events.map ( e => { 
+        return { token0: e.args?.tokenX, token1: e.args?.tokenY, bin: e.args?.binStep, addr: e.args?.LBPair}
+    })
+    console.table(pairs)
+    RPC_MANAGERS[Version.V2_1].initPairs(42161, pairs)
+
+    // v2 arb
+    factory = new Contract(V2_FACTORY_ADDRESSES[42161], V2_FACTORY_ABI, MULTICALL_PROVIDERS[42161])
+    filter = factory.filters.LBPairCreated();
+    events = await factory.queryFilter(filter, ARB_V2_CREATION)
+    pairs = events.map ( e => { 
+        return { token0: e.args?.tokenX, token1: e.args?.tokenY, bin: e.args?.binStep, addr: e.args?.LBPair}
+    })
+    console.table(pairs)
+    RPC_MANAGERS[Version.V2].initPairs(42161, pairs)
+
+    // v1 arb
+    factory = new Contract(V1_FACTORY_ADDRESSES[42161], V1_FACTORY_ABI, MULTICALL_PROVIDERS[42161])
+    filter = factory.filters.PairCreated();
+    events = await factory.queryFilter(filter, ARB_V2_CREATION)
+    pairs = events.map ( e => { 
+        return { token0: e.args?.token0, token1: e.args?.token1, bin: 0, addr: e.args?.pair}
+    })
+    console.table(pairs)
+    RPC_MANAGERS[Version.V1].initPairs(42161, pairs)
+
+    // get all bins for each pair
+
+    // giant multicall to init all pairs
 }

@@ -1,4 +1,4 @@
-import { Version } from "../common"
+import { Version } from "./constants"
 import { Pair } from "./interfaces"
 
 export const ERROR_V1_PAIR_NOT_FOUND = (base: string, quote: string) => `Pair not found for base ${base} and quote ${quote}. Consider checking your chainid.`
