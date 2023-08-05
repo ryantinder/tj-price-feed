@@ -1,8 +1,8 @@
 'use strict';
 
 import { expect } from 'chai';
-import { Version, fetchPrices } from '../src/common';
-import { ARB_ARB, ARB_BTC_b, ARB_JOE, ARB_PAIRS, ARB_USDC, ARB_USDCe, ARB_USDT, ARB_WBTC, ARB_WETH, ARB_svBTC, AVAX_BTC_b, AVAX_PAIRS, AVAX_USDCe, AVAX_USDTe, AVAX_WBTC_e, BSC_BNB, BSC_BUSD, BSC_PAIRS, BSC_USDC, BSC_USDT } from '../src/lib/constants';
+import { fetchPrices } from '../src/common';
+import { ARB_ARB, ARB_BTC_b, ARB_JOE, ARB_PAIRS, ARB_USDC, ARB_USDCe, ARB_USDT, ARB_WBTC, ARB_WETH, ARB_svBTC, AVAX_BTC_b, AVAX_PAIRS, AVAX_USDCe, AVAX_USDTe, AVAX_WBTC_e, BSC_BNB, BSC_BUSD, BSC_PAIRS, BSC_USDC, BSC_USDT, Version } from '../src/lib/constants';
 import { offchainPairResults } from './lib/pricing';
 import { V2_1_ARB_WETH_PAIR, V2_1_BNB_USDT_PAIR, V2_1_BTC_WETH_PAIR, V2_1_USDT_USDC_PAIR, V2_1_USDT_USDC_PAIR_AVAX, V2_1_USDT_USDCe_PAIR, V2_1_WETH_JOE_PAIR, V2_1_WETH_USDC_PAIR, V2_1_WETH_USDT_PAIR, V2_1_svBTC_wBTC_PAIR } from './lib/constants';
 import { higer, lower } from './lib/helpers';

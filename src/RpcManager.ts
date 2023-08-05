@@ -6,11 +6,20 @@ import { BigNumber, Contract, constants, ethers, logger, utils } from "ethers";
 import { V1_FACTORY_ABI, V1_PAIR_ABI, V2_1_FACTORY_ABI, V2_1_PAIR_ABI, V2_FACTORY_ABI, V2_PAIR } from "./lib/abi";
 import { ERROR_GET_RESERVES_FAILED, ERROR_PAIR_NOT_FOUND, ERROR_V2_PRICE_MATH_FAILED } from "./lib/error";
 
+/**
+ * @class RPCManager
+ * @description Class provides caching and request deduplication for RPC calls,
+ *              primary logic class for price math as well.
+ */
 export class RPCManager {
+    // The version of TraderJoe contracts managed
     private version: Version
+    // Caching
     private cache: Cache
+    // Variables for tracking caching performance
     private pair_rpc_calls = 0
     private reserves_rpc_calls = 0
+    // Variables for request deduplication
     private pair_call_manager: {[t0t1bin: string] : {
         isFetching: boolean,
         promise: Promise<string>
@@ -32,6 +41,13 @@ export class RPCManager {
         console.log(`${this.pair_rpc_calls} pair calls ${this.reserves_rpc_calls} reserves calls`)
     }
 
+    /**
+     * @member initPairs
+     * @param chainid 
+     * @param pairs 
+     * @description Function intended to be called from init script in src/common.ts,
+     * caches all pair addresses and last_bin for low liquidity warnings
+     */
     async initPairs(chainid: number, pairs: {token0: string, token1: string, bin: number, addr: string}[]) {
         console.log(`Initializing chainid ${chainid}, version ${this.version}, ${pairs.length} pairs`)
         pairs.map(pair => this.cache.setPair(pair.bin, pair.token0, pair.token1, pair.addr))
@@ -60,19 +76,27 @@ export class RPCManager {
         }
     }
 
+    /**
+     * @member getPairAddress
+     * @param chainid 
+     * @param pair address
+     * @returns PairAddress object, which just extends a `pair` with its address
+     */
     async getPairAddress( chainid: number, pair: Pair ) : Promise<PairAddress> {
-        console.log("GETTING PAIR ADDRESS", pair)
+        // sort tokens
         const [token0, token1] = sortTokens(pair.asset, pair.quote)
         let address = constants.AddressZero;
         let err: string | undefined;
+        // deduplication key concatenates pair tokens and bin to be unique
         const t0t1bin = `${token0}${token1}${pair.bin}`
 
-        // if the rpc call is already out
+        // first check cache for pair address
         if (this.cache.hasPair(pair.bin, token0, token1)) {
-            console.log("PAIR CACHE HIT")
+            // console.log("PAIR CACHE HIT")
             address = this.cache.readPair(pair.bin, token0, token1)
         } else {
-            console.log("PAIR CACHE MISS, NEED TO INIT PAIR")
+            // console.log("PAIR CACHE MISS, NEED TO INIT PAIR")
+            // pair might not exist or might be already being fetched
             if (!this.pair_call_manager[t0t1bin] || !this.pair_call_manager[t0t1bin].isFetching) {
                 let promise: Promise<string>
                 if (this.version == Version.V1) {
@@ -85,7 +109,8 @@ export class RPCManager {
                 }
                 this.pair_call_manager[t0t1bin] = { isFetching: true, promise }
             }
-            console.log("WAITING ON PROMISE RESOLUTION")
+            // console.log("WAITING ON PROMISE RESOLUTION")
+            // For simulantous requests, only one will be fetching, the rest will wait on the promise
             address = await this.pair_call_manager[t0t1bin].promise
             this.pair_call_manager[t0t1bin].isFetching = false
             if ( address == constants.AddressZero ) err = ERROR_PAIR_NOT_FOUND(this.version, pair)
@@ -93,20 +118,27 @@ export class RPCManager {
         return { ...pair, address, err }
 
     }
-
+    /**
+     * @member getPairReserves
+     * @param chainid 
+     * @param pair PairAddress object
+     * @returns FullPairResult
+     * @description 2nd step of fetching price. Handles caching for RPC calling reserves
+     */
     async getPairReserves( chainid: number, pair: PairAddress) : Promise<FullPairResults> {
-        console.log("GETTING RESERVES")
+        // console.log("GETTING RESERVES")
+        // we can skip the rpc call if the pair has already errored in a previous step
         if (pair.err) return Promise.resolve({ ...BAD_PAIR, ...pair })
-        const [token0, token1] = sortTokens(pair.asset, pair.quote)
         let err: string | undefined;
         let reserves: Reserves
 
+        // first check cache for reserves
         if (this.cache.hasReserves(pair.address) && this.cache.validReserves(pair.address)) {
-            console.log("RESERVES CACHE HIT")
+            // console.log("RESERVES CACHE HIT")
             reserves = this.cache.readReserves(pair.address)
         } else {
-            // reserves might not exist or might be outdated
-            console.log("RESERVES CACHE MISS")
+            // reserves might not exist or might be already being fetched
+            // console.log("RESERVES CACHE MISS")
             if (!this.reserves_call_manager[pair.address] || !this.reserves_call_manager[pair.address].isFetching) {
                 let promise: Promise<Reserves>
                 if (this.version == Version.V1) {
@@ -119,10 +151,10 @@ export class RPCManager {
                 }
                 this.reserves_call_manager[pair.address] = { isFetching: true, promise }
             }
-            console.log("WAITING ON PROMISE RESOLUTION")
+            // console.log("WAITING ON PROMISE RESOLUTION")
+            // For simulantous requests, only one will be fetching, the rest will wait on the promise
             reserves = await this.reserves_call_manager[pair.address].promise
             this.reserves_call_manager[pair.address].isFetching = false
-            console.log(reserves.err)
             if ( reserves.err ) return Promise.resolve({ ...BAD_PAIR, ...pair, err })
         }
         // at this point we should only have valid reserves
@@ -135,7 +167,14 @@ export class RPCManager {
             return this._V2_MATH( chainid, pair, reserves)
         }
     }
-
+    /**
+     * @member _V1_PairAddr
+     * @param chainid 
+     * @param token0 
+     * @param token1 
+     * @returns pair address
+     * @description contract call pair address for V1
+     */
     private async _V1_PairAddr( chainid: number, token0: string, token1: string ) : Promise<string> {
         const V1_FACTORY = new Contract(V1_FACTORY_ADDRESSES[chainid], V1_FACTORY_ABI, MULTICALL_PROVIDERS[chainid]);
         try {
@@ -150,6 +189,14 @@ export class RPCManager {
             return constants.AddressZero
         }
     }
+    /**
+     * @member _V2_1_PairAddr
+     * @param chainid 
+     * @param bin 
+     * @param token0 
+     * @param token1 
+     * @returns contract call pair address for V2.1
+     */
     private async _V2_1_PairAddr( chainid: number, bin: number, token0: string, token1: string ) : Promise<string> {
         const V2_1_FACTORY = new Contract(V2_1_FACTORY_ADDRESS, V2_1_FACTORY_ABI, MULTICALL_PROVIDERS[chainid]);
         console.log("RPC CALLING PAIR ADDRESS")
@@ -171,6 +218,14 @@ export class RPCManager {
             return constants.AddressZero
         }
     }
+    /**
+     * @member _V2_PairAddr
+     * @param chainid 
+     * @param bin 
+     * @param token0 
+     * @param token1 
+     * @returns contract call pair address for V2
+     */
     private async _V2_PairAddr( chainid: number, bin: number, token0: string, token1: string ) : Promise<string> {
         const V2_FACTORY = new Contract(V2_FACTORY_ADDRESSES[chainid], V2_FACTORY_ABI, MULTICALL_PROVIDERS[chainid]);
         console.log("RPC CALLING PAIR ADDRESS")
@@ -191,6 +246,12 @@ export class RPCManager {
             return constants.AddressZero
         }
     }
+    /**
+     * @member _V1_Reserves
+     * @param chainid 
+     * @param pair 
+     * @returns contract call reserves for V1
+     */
     private async _V1_Reserves( chainid: number, pair: PairAddress) : Promise<Reserves> {
         const pair_contract = new Contract(pair.address, V1_PAIR_ABI, MULTICALL_PROVIDERS[chainid])
         console.log("RPC CALLING RESERVES")
@@ -209,6 +270,12 @@ export class RPCManager {
             return { ...BAD_RESERVES, err: ERROR_GET_RESERVES_FAILED(this.version, pair.address)}
         }
     }
+    /**
+     * @member _V2_1_Reserves
+     * @param chainid 
+     * @param pair 
+     * @returns contract call reserves for V2.1
+     */
     private async _V2_1_Reserves( chainid: number, pair: PairAddress ) : Promise<Reserves> {
         const pair_contract = new Contract(pair.address, V2_1_PAIR_ABI, MULTICALL_PROVIDERS[chainid])
         console.log("RPC CALLING RESERVES")
@@ -239,6 +306,13 @@ export class RPCManager {
             return { ...BAD_RESERVES, err: ERROR_GET_RESERVES_FAILED(this.version, pair.address)}
         }
     }
+
+    /**
+     * @member _V2_Reserves
+     * @param chainid
+     * @param pair 
+     * @returns contract call reserves for V2
+     */
     private async _V2_Reserves( chainid: number, pair: PairAddress ) : Promise<Reserves> {
         const pair_contract = new Contract(pair.address, V2_PAIR, MULTICALL_PROVIDERS[chainid])
         console.log("RPC CALLING RESERVES")
@@ -269,7 +343,13 @@ export class RPCManager {
             return { ...BAD_RESERVES, err: ERROR_GET_RESERVES_FAILED(this.version, pair.address)}
         }
     }
-
+    /**
+     * @member _V2_MATH
+     * @param chainid 
+     * @param pair 
+     * @param data 
+     * @returns helper for price math for V2
+     */
     private _V2_MATH = (chainid: number, pair: PairAddress, data: Reserves) : FullPairResults => {
         try {
             const [dec0, dec1] = [getDecimals(chainid, data.token0), getDecimals(chainid, data.token1)]
@@ -303,6 +383,13 @@ export class RPCManager {
             }
         }
     }
+    /**
+     * @member _V1_MATH
+     * @param chainid 
+     * @param pair 
+     * @param data Reserves object
+     * @returns helper for price math for V1
+     */
     private _V1_MATH = (chainid: number, pair: PairAddress, data: Reserves) : FullPairResults => {
         const dec0 = getDecimals(chainid, data.token0)				
         const dec1 = getDecimals(chainid, data.token1)				

@@ -13,6 +13,12 @@ export const logger = Logger.getLogger();
 export const app = express()
 const port = process.env.PORT || 3333;
 
+/**
+ * @author 0xTinder
+ * Entry point for API calls
+ * This file will handle GET and POST requests, as well as set up the express server
+ */
+
 /*/////////////////////////////////////////////
                     GET
 /////////////////////////////////////////////*/
