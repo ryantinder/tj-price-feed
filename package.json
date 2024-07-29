@@ -59,7 +59,7 @@
     "typescript": "^5.1.6",
     "dotenv": "^16.0.3",
     "pactum": "^3.4.1",
-    "supertest": "^6.3.3",
+    "supertest": "^7.0.0",
     "axios": "^1.4.0"
   },
   "config": {
